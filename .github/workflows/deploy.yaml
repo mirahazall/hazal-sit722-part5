@@ -51,17 +51,28 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
-      - name: Retrieve kubeconfig
-        id: kubeconfig
-        run: echo "${{ steps.terraform.outputs.kubeconfig }}" > kubeconfig.yaml
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v1
+      - name: Azure Login action
+        uses: azure/login@v2
         with:
-          version: 'v1.24.2'
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        enable-AzPSSession: true
+
+      - name: Azure CLI script
+        uses: azure/cli@v2
+        with:
+        azcliversion: latest
+        inlineScript: |
+          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }} --file kubeconfig.yaml
+          # Encode kubeconfig to base64
+          BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64 | tr -d '\n')
+          echo "BASE64_KUBECONFIG=${BASE64_KUBECONFIG}" >> $GITHUB_ENV
           
-      - name: Use kubeconfig
-        run: kubectl --kubeconfig=kubeconfig.yaml config use-context aks-context
+        # Set up kubectl using a pre-existing kubeconfig in GitHub Secrets
+      - name: Set up kubectl
+        uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ env.BASE64_KUBECONFIG }}
+          kubectl-version: v1.24.2
 
       - name: Login to Azure Container Registry
         run: echo ${{ secrets.ARM_CLIENT_SECRET }} | docker login ${{ env.CONTAINER_REGISTRY }} -u ${{ secrets.ARM_CLIENT_ID }} --password-stdin
