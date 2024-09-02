@@ -39,17 +39,25 @@ jobs:
           terraform_version: 1.5.6 # Specify the version you want to use
 
       # Initialize Terraform
-      - name: Terraform Init
-        run: terraform init
+  #    - name: Terraform Init
+    #    run: terraform init
 
       # Apply Terraform configuration
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        env:
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  #    - name: Terraform Apply
+   #     run: terraform apply -auto-approve
+   #     env:
+   #       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+   #       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+   #       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+   #       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+      - name: install az cli 
+        run: |
+         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: install az cli 
+        run: |
+         sudo az aks install-cli
 
       # Login to Azure
       - name: Azure Login
@@ -59,8 +67,13 @@ jobs:
 
       - name: Retrieve kubeconfig and encode to base64
         run: |
-          cat ~/.kube/config | base64 > config.txt
-          echo "BASE64_KUBECONFIG=$(cat config.txt)" >> $GITHUB_ENV
+          az aks get-credentials --resource-group deakinlibrary --name deakinlibrary --file kubeconfig.yaml     
+
+      - name: Base64 encode the kubeconfig
+        id: encode-kubeconfig
+        run: |
+          BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64)
+          echo "BASE64_KUBECONFIG=$BASE64_KUBECONFIG" >> $GITHUB_ENV
 
    #   - name: Set up Azure CLI
    #     uses: azure/azure-cli-action@v1
