@@ -51,6 +51,20 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
+      - name: Retrieve kubeconfig
+        id: kubeconfig
+        run: echo "${{ steps.terraform.outputs.kubeconfig }}" > kubeconfig.yaml
+
+      - name: Encode kubeconfig to base64
+        id: encode-kubeconfig
+        run: echo "$(base64 -w 0 kubeconfig.yaml)" > kubeconfig-base64.txt
+
+      - name: Set up kubectl
+        uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ steps.encode-kubeconfig.outputs.kubeconfig-base64 }}
+          kubectl-version: v1.24.2
+
       - name: Login to Azure Container Registry
         run: echo ${{ secrets.ARM_CLIENT_SECRET }} | docker login ${{ env.CONTAINER_REGISTRY }} -u ${{ secrets.ARM_CLIENT_ID }} --password-stdin
 
@@ -65,25 +79,6 @@ jobs:
       #
       - name: Publish
         run: ./scripts/push-image.sh
-
-     # Install Azure CLI
-      - name: Install Azure CLI
-        uses: azure/setup-azcli@v3
-
-      # Get kubeconfig and convert to base64
-      - name: Get kubeconfig and convert to base64
-        id: kubeconfig
-        run: |
-          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }} --file kubeconfig
-          base64 kubeconfig | tr -d '\n' > kubeconfig_base64
-          echo "KUBE_CONFIG=$(cat kubeconfig_base64)" >> $GITHUB_ENV
-
-      # Use kubectl-action with base64-encoded kubeconfig
-      - name: Set up kubectl
-        uses: tale/kubectl-action@v1
-        with:
-          base64-kube-config: ${{ env.KUBE_CONFIG }}
-          kubectl-version: v1.24.2
       
       #
       # Expands the configuration template and deploys the microservice.
