@@ -8,5 +8,5 @@
 
 
 #echo $REGISTRY_PW | docker login $CONTAINER_REGISTRY --username $REGISTRY_UN --password-stdin
-docker push ${ACR_LOGIN_SERVER}/book_catalog:${VERSION}
-docker push ${ACR_LOGIN_SERVER}/inventory_management:${VERSION}
+docker push $CONTAINER_REGISTRY/book_catalog:$VERSION
+docker push $CONTAINER_REGISTRY/inventory_management:$VERSION
