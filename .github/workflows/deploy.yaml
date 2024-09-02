@@ -1,8 +1,7 @@
 # 
 # GitHub Actions workflow.
 #
-# Automatically deploys the Node.js microservice to Kubernetes on push to any branch. 
-# For real use you might want to restrict this to the "prod" branch.
+# Automatically deploys the microservices to Kubernetes on push to any branch. 
 #
 
 name: Deploy microservice
@@ -27,9 +26,6 @@ jobs:
     
     env:
       VERSION: ${{ github.sha }}
-      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
-      REGISTRY_UN: ${{ secrets.REGISTRY_UN }}
-      REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
 
     steps:
       
@@ -54,6 +50,19 @@ jobs:
           ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+      # Capture the ACR login server and kubeconfig
+      - name: Get Terraform Outputs
+        id: tf_outputs
+        run: |
+          echo "ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)" >> $GITHUB_ENV
+          echo "KUBECONFIG_CONTENT=$(terraform output -raw kubeconfig)" >> $GITHUB_ENV
+
+      - name: Set up Kubernetes
+        run: echo "$KUBECONFIG_CONTENT" | base64 --decode > $HOME/.kube/config
+
+      - name: Login to Azure Container Registry
+        run: echo ${{ secrets.ARM_CLIENT_SECRET }} | docker login ${{ env.ACR_LOGIN_SERVER }} -u ${{ secrets.ARM_CLIENT_ID }} --password-stdin
 
       #
       # Builds the Docker image.
