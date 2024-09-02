@@ -8,5 +8,6 @@ variable location {
   default = "australiaeast"
 }
 
-variable kubernetes_version {    
+variable kubernetes_version {   
+  default = "1.30.3" 
 }
