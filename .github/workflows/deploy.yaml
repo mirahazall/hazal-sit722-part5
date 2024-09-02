@@ -51,13 +51,13 @@ jobs:
    #       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
    #       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
-      - name: install az cli 
-        run: |
-         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+   #   - name: install az cli 
+   #     run: |
+   #      curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
-      - name: install az cli 
-        run: |
-         sudo az aks install-cli
+   #   - name: install az cli 
+   #     run: |
+   #      sudo az aks install-cli
 
       # Login to Azure
       - name: Azure Login
@@ -65,15 +65,14 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Retrieve kubeconfig and encode to base64
-        run: |
-          az aks get-credentials --resource-group deakinlibrary --name deakinlibrary --file kubeconfig.yaml     
+   #   - name: Retrieve kubeconfig and encode to base64
+   #     run: |
+   #       az aks get-credentials --resource-group deakinlibrary --name deakinlibrary --file kubeconfig.yaml     
 
-      - name: Base64 encode the kubeconfig
-        id: encode-kubeconfig
-        run: |
-          BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64)
-          echo "BASE64_KUBECONFIG=$BASE64_KUBECONFIG" >> $GITHUB_ENV
+   #   - name: Base64 encode the kubeconfig
+   #     id: encode-kubeconfig
+   #     run: |
+   #       BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64 > kubeconfig.txt)
 
    #   - name: Set up Azure CLI
    #     uses: azure/azure-cli-action@v1
@@ -83,17 +82,12 @@ jobs:
     #  - name: Get Kubernetes credentials
     #    run: |
      #     az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
-
-   #   - name: Set up kubectl
-    #    uses: azure/setup-kubectl@v1
-     #   with:
-      #    version: v1.24.2
            
         # Set up kubectl using a pre-existing kubeconfig in GitHub Secrets
       - name: Set up kubectl
         uses: tale/kubectl-action@v1
         with:
-          base64-kube-config: ${{ env.BASE64_KUBECONFIG }}
+          base64-kube-config: ${{ secrets.BASE64_KUBECONFIG }}
           kubectl-version: v1.24.2
 
 
