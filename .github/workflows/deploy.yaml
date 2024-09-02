@@ -51,21 +51,21 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
-      - name: Azure Login action
+      # Login to Azure
+      - name: Azure Login
         uses: azure/login@v2
         with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-        enable-AzPSSession: true
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Get AKS credentials and encode kubeconfig
       - name: Azure CLI script
         uses: azure/cli@v2
         with:
-        azcliversion: latest
-        inlineScript: |
-          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }} --file kubeconfig.yaml
-          # Encode kubeconfig to base64
-          BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64 | tr -d '\n')
-          echo "BASE64_KUBECONFIG=${BASE64_KUBECONFIG}" >> $GITHUB_ENV
+          azcliversion: latest
+          inlineScript: |
+            az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }} --file kubeconfig.yaml
+            BASE64_KUBECONFIG=$(cat kubeconfig.yaml | base64 | tr -d '\n')
+            echo "BASE64_KUBECONFIG=${BASE64_KUBECONFIG}" >> $GITHUB_ENV
           
         # Set up kubectl using a pre-existing kubeconfig in GitHub Secrets
       - name: Set up kubectl
