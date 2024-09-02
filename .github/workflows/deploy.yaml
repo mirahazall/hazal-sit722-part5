@@ -55,15 +55,13 @@ jobs:
         id: kubeconfig
         run: echo "${{ steps.terraform.outputs.kubeconfig }}" > kubeconfig.yaml
 
-      - name: Encode kubeconfig to base64
-        id: encode-kubeconfig
-        run: echo "$(base64 -w 0 kubeconfig.yaml)" > kubeconfig-base64.txt
-
       - name: Set up kubectl
-        uses: tale/kubectl-action@v1
+        uses: azure/setup-kubectl@v1
         with:
-          base64-kube-config: ${{ steps.encode-kubeconfig.outputs.kubeconfig-base64 }}
-          kubectl-version: v1.24.2
+          version: 'v1.24.2'
+          
+      - name: Use kubeconfig
+        run: kubectl --kubeconfig=kubeconfig.yaml config use-context aks-context
 
       - name: Login to Azure Container Registry
         run: echo ${{ secrets.ARM_CLIENT_SECRET }} | docker login ${{ env.CONTAINER_REGISTRY }} -u ${{ secrets.ARM_CLIENT_ID }} --password-stdin
