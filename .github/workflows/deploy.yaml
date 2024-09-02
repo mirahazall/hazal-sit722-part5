@@ -57,26 +57,31 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set up Azure CLI
-        uses: azure/azure-cli-action@v1
-        with:
-          azcliversion: '2.48.0'  # You can specify the version you need
-
-      - name: Get Kubernetes credentials
+      - name: Retrieve kubeconfig and encode to base64
         run: |
-          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
+          cat ~/.kube/config | base64 > config.txt
+          echo "BASE64_KUBECONFIG=$(cat config.txt)" >> $GITHUB_ENV
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v1
-        with:
-          version: v1.24.2
+   #   - name: Set up Azure CLI
+   #     uses: azure/azure-cli-action@v1
+   #     with:
+    #      azcliversion: '2.48.0'  # You can specify the version you need
+
+    #  - name: Get Kubernetes credentials
+    #    run: |
+     #     az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
+
+   #   - name: Set up kubectl
+    #    uses: azure/setup-kubectl@v1
+     #   with:
+      #    version: v1.24.2
            
         # Set up kubectl using a pre-existing kubeconfig in GitHub Secrets
-     # - name: Set up kubectl
-     #   uses: tale/kubectl-action@v1
-      #   with:
-       #   base64-kube-config: ${{ env.BASE64_KUBECONFIG }}
-       #   kubectl-version: v1.24.2
+      - name: Set up kubectl
+        uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ env.BASE64_KUBECONFIG }}
+          kubectl-version: v1.24.2
 
 
       - name: Login to Azure Container Registry
