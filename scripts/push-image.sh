@@ -1,11 +1,5 @@
-#
 # Publishes a Docker image.
-#
-# Usage:
-#
-#       ./scripts/push-image.sh
-#
-
+#./scripts/push-image.sh
 
 #echo $REGISTRY_PW | docker login $CONTAINER_REGISTRY --username $REGISTRY_UN --password-stdin
 docker push ${CONTAINER_REGISTRY}/book_catalog:${VERSION}
