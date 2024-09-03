@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
       - name: book-catalog
-        image: $CONTAINER_REGISTRY/book_catalog:$VERSION
+        image: ${CONTAINER_REGISTRY}/book_catalog:${VERSION}
         ports:
         - containerPort: 8000
         env:
@@ -64,7 +64,7 @@ spec:
     spec:
       containers:
       - name: inventory-management
-        image: $CONTAINER_REGISTRY/inventory_management:$VERSION
+        image: ${CONTAINER_REGISTRY}/inventory_management:${VERSION}
         ports:
         - containerPort: 8000
         env:

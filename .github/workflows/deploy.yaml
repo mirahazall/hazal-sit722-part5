@@ -106,16 +106,25 @@ jobs:
       # Builds the Docker image.
       #
       - name: Build
+        env:
+          CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+          VERSION: ${{ github.sha }}
         run: ./scripts/build-image.sh
 
       #
       # Publishes the Docker image to the container registry.
       #
       - name: Publish
+        env:
+          CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+          VERSION: ${{ github.sha }}
         run: ./scripts/push-image.sh
       
       #
       # Expands the configuration template and deploys the microservice.
       #
       - name: Deploy
+        env:
+          CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+          VERSION: ${{ github.sha }}
         run: ./scripts/deploy.sh
