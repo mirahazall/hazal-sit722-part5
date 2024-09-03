@@ -128,3 +128,9 @@ jobs:
           CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
           VERSION: ${{ github.sha }}
         run: ./scripts/deploy.sh
+
+      - name: Get Kubernetes Services
+        run: kubectl get services
+
+      - name: Get Kubernetes Pods
+        run: kubectl get pods
