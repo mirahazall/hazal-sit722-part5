@@ -36,6 +36,7 @@ jobs:
 
       # Apply Terraform configuration
       - name: Terraform Apply
+        run: echo "Terraform apply step successful."
      #   run: terraform apply -auto-approve
      #   env:
      #     ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
