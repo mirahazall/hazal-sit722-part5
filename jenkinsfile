@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    environment {
+        // Service principal credentials
+        ARM_CLIENT_ID = credentials('azure-client-id')
+        ARM_CLIENT_SECRET = credentials('azure-client-secret')
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+        ARM_TENANT_ID = credentials('azure-tenant-id')
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Check out the code from GitHub repository
+                git 'https://github.com/mirahazall/hazal-sit722-part5/'
+            }
+        }
+        
+    stage('Check Terraform Version') {
+            steps {
+                script {
+                    sh 'terraform --version'
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                script {
+                    sh '''
+                    terraform init
+                    '''
+                }
+            }
+        }
+
+     //  stage('Terraform Apply') {
+    //       steps {
+    //            script {
+     //               sh '''
+     //               terraform apply -auto-approve
+     //               '''
+      //          }
+      //      }
+      //  }
+
+        stage('Login to Azure') {
+            steps {
+                script {
+                    sh '''
+                    az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+                    '''
+                }
+            }
+        }
+
+                 stage('Verify login') {
+            steps {
+                script {
+                    sh '''
+                     az account list --output table
+                    '''
+                }
+            }
+        }
+
+
+        stage('Login to Azure Container Registry') {
+            steps {
+                script {
+                    sh '''
+                    az acr login --name deakinlibrary
+                    '''
+                }
+            }
+        }
+        
+        stage('Login to Azure Container Registry') {
+            steps {
+                script {
+                    // Login to Azure Container Registry
+                    sh '''
+                    echo "${ARM_CLIENT_SECRET}" | docker login ${CONTAINER_REGISTRY} -u ${ARM_CLIENT_ID} --password-stdin
+                    '''
+                }
+            }
+        }
+
+
+    
+    }
+}
