@@ -1,5 +1,8 @@
 pipeline {
     agent any
+        triggers {
+        githubPush()  // This listens for GitHub webhooks
+        }
 
     //Setting up the environment variables.
     environment {
