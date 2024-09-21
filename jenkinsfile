@@ -1,24 +1,31 @@
 pipeline {
     agent any
 
+    //Setting up the environment variables.
     environment {
         // Service principal credentials
         ARM_CLIENT_ID = credentials('azure-client-id')
         ARM_CLIENT_SECRET = credentials('azure-client-secret')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
         ARM_TENANT_ID = credentials('azure-tenant-id')
+        CONTAINER_REGISTRY = credentials('container-registry-id')
+        VERSION = "${env.GIT_COMMIT}"
+        KUBECONFIG_CONTENT = credentials('kubeconfig')
+        KUBE_CONFIG_PATH = '/Users/mirahazall/.kube/config'
         PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
     }
 
     stages {
+        //Executes git to pull the latest code from our GitHub repository into our Jenkins workspace.
         stage('Checkout') {
             steps {
                 // Check out the code from GitHub repository
                 git 'https://github.com/mirahazall/hazal-sit722-part5/'
             }
         }
-        
-    stage('Check Terraform Version') {
+
+        // Verifies that terraform is installed and prints its version.
+        stage('Check Terraform Version') {
             steps {
                 script {
                     sh 'terraform --version'
@@ -26,6 +33,7 @@ pipeline {
             }
         }
 
+        // Initializes the Terraform.
         stage('Terraform Init') {
             steps {
                 script {
@@ -36,16 +44,18 @@ pipeline {
             }
         }
 
-     //  stage('Terraform Apply') {
-    //       steps {
-    //            script {
-     //               sh '''
-     //               terraform apply -auto-approve
-     //               '''
-      //          }
-      //      }
-      //  }
+        // Runs terraform apply -auto-approve command to create our Azure resourses automatically. 
+        stage('Terraform Apply') {
+           steps {
+               script {
+                    sh '''
+                    terraform apply -auto-approve
+                   '''
+                }
+          }
+        } 
 
+        //Logs into Azure using a service principal.
         stage('Login to Azure') {
             steps {
                 script {
@@ -55,32 +65,11 @@ pipeline {
                 }
             }
         }
-
-                 stage('Verify login') {
-            steps {
-                script {
-                    sh '''
-                     az account list --output table
-                    '''
-                }
-            }
-        }
-
-
-        stage('Login to Azure Container Registry') {
-            steps {
-                script {
-                    sh '''
-                    az acr login --name deakinlibrary
-                    '''
-                }
-            }
-        }
         
+       // Uses Docker to log into ACR using the service principal.
         stage('Login to Azure Container Registry') {
             steps {
                 script {
-                    // Login to Azure Container Registry
                     sh '''
                     echo "${ARM_CLIENT_SECRET}" | docker login ${CONTAINER_REGISTRY} -u ${ARM_CLIENT_ID} --password-stdin
                     '''
@@ -88,7 +77,131 @@ pipeline {
             }
         }
 
+        //Checks the Docker version, and if Docker isn't installed, downloads and installs it.
+        stage('Set up Docker') {
+            steps {
+                script {
+                    sh '''
+                    docker --version || curl -fsSL https://get.docker.com | sh
+                    '''
+                }
+            }
+        }
 
-    
+        // Downloads the latest version of Docker Compose
+        stage('Install Docker Compose') {
+            steps {
+                script {
+                    sh '''
+                    # Download Docker Compose to a temporary location
+                    curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /tmp/docker-compose
+                    # Move it to /usr/local/bin and set permissions
+                    sudo mv /tmp/docker-compose /usr/local/bin/docker-compose
+                    sudo chmod +x /usr/local/bin/docker-compose
+                    '''
+                }
+            }
+        }
+
+       // Downloads kubectl. Creates the .kube directory in Jenkins to store the Kubernetes configuration. Writes the KUBECONFIG_CONTENT (passed from Jenkins credentials) to the config file.
+        stage('Set up kubectl') {
+            steps {
+                script {
+                    sh '''
+                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/darwin/amd64/kubectl"
+                    chmod +x kubectl
+                    sudo mv kubectl /usr/local/bin/
+
+                    # Create the .kube directory in the Jenkins home directory
+                    mkdir -p /Users/mirahazall/.jenkins/.kube
+
+                    # Write the kubeconfig content to the config file
+                    echo "${KUBECONFIG_CONTENT}" > /Users/mirahazall/.jenkins/.kube/config
+ 
+                    # Set the right permissions for the kubeconfig file
+                    chmod 600 /Users/mirahazall/.jenkins/.kube/config
+
+                    # Verify that kubectl is correctly configured
+                    kubectl version --client
+                    '''
+                }
+            }
+        }
+        
+        //Retrieves the credentials for our Azure Kubernetes Service (AKS) cluster and merges them into the kubeconfig file.
+        stage('Get AKS Credentials') {
+            steps {
+                script {
+                    sh '''
+                    az aks get-credentials --resource-group bookapp --name bookapp --overwrite-existing
+                    kubectl config use-context bookapp
+                    '''
+                }
+            }
+        }
+
+        //Verifies the current Kubernetes context to ensure it's set to your AKS cluster.
+        stage('Confirm Current Context') {
+            steps {
+                script {
+                    // Confirm the current Kubernetes context
+                    sh '''
+                    echo "Current Kubernetes context:"
+                    kubectl config current-context
+                    '''
+                }
+            }
+        }
+        
+        //Runs the shell script that build the docker images for our app
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh './scripts/build-image.sh'
+                }
+            }
+        }
+        
+        // Pushes the Docker image to your Azure Container Registry.
+        stage('Publish Docker Image') {
+            steps {
+                script {
+                    sh './scripts/push-image.sh'
+                }
+            }
+        }
+
+        //Executes the deploy.sh script which applies Kubernetes deployment file to the cluster using kubectl.
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh './scripts/deploy.sh'
+                }
+            }
+        }
+        
+        //Lists the services that are currently running in the Kubernetes cluster.
+        stage('Get Kubernetes Services') {
+            steps {
+                sh 'kubectl get services'
+            }
+        }
+
+       // Lists the pods running in the Kubernetes cluster.
+        stage('Get Kubernetes Pods') {
+            steps {
+                sh 'kubectl get pods'
+            }
+        }
+    }
+
+    //Prints success or failure messages after the deployment
+    post {
+        success {
+            echo 'Deployment completed successfully.'
+        }
+        failure {
+            echo 'Deployment failed.'
+        }
     }
 }
