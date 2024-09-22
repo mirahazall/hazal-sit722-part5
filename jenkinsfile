@@ -1,11 +1,9 @@
 pipeline {
     agent any
-        //listens for GitHub webhooks.
         triggers {
-        githubPush()
+        githubPush()  // This listens for GitHub webhooks
         }
 
-    //Setting up the environment variables.
     environment {
         // Service principal credentials
         ARM_CLIENT_ID = credentials('azure-client-id')
@@ -14,7 +12,6 @@ pipeline {
         ARM_TENANT_ID = credentials('azure-tenant-id')
         CONTAINER_REGISTRY = credentials('container-registry-id')
         VERSION = "${env.GIT_COMMIT}"
-        KUBECONFIG_CONTENT = credentials('kubeconfig')
         KUBE_CONFIG_PATH = '/Users/mirahazall/.kube/config'
         PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
     }
@@ -117,13 +114,7 @@ pipeline {
                     sudo mv kubectl /usr/local/bin/
 
                     # Create the .kube directory in the Jenkins home directory
-                    mkdir -p /Users/mirahazall/.jenkins/.kube
-
-                    # Write the kubeconfig content to the config file
-                    echo "${KUBECONFIG_CONTENT}" > /Users/mirahazall/.jenkins/.kube/config
- 
-                    # Set the right permissions for the kubeconfig file
-                    chmod 600 /Users/mirahazall/.jenkins/.kube/config
+                    mkdir -p /Users/mirahazall/.jenkins/.kube/
 
                     # Verify that kubectl is correctly configured
                     kubectl version --client
@@ -136,9 +127,18 @@ pipeline {
         stage('Get AKS Credentials') {
             steps {
                 script {
+                    // Define where to store kubeconfig
+                    def kubeconfigPath = '/Users/mirahazall/.jenkins/.kube/config'
+                    
+                    // Set KUBECONFIG environment variable
+                    env.KUBECONFIG = kubeconfigPath
+
+                    // Fetch AKS credentials and write to kubeconfig
                     sh '''
-                    az aks get-credentials --resource-group bookapp --name bookapp --overwrite-existing
-                    kubectl config use-context bookapp
+                    mkdir -p $(dirname ${KUBECONFIG}) # Create .kube directory if it doesn't exist
+                    az aks get-credentials --resource-group bookapp --name bookapp --file ${KUBECONFIG} --overwrite-existing
+                    # Set permissions for the kubeconfig file after it's created
+                    chmod 600 ${KUBECONFIG}
                     '''
                 }
             }
@@ -180,6 +180,15 @@ pipeline {
             steps {
                 script {
                     sh './scripts/deploy.sh'
+                }
+            }
+        }
+
+        // Adds a 1-minute delay before checking the services.
+        stage('Wait before checking services') {
+            steps {
+                script {
+                    sleep(time: 1, unit: 'MINUTES')
                 }
             }
         }
